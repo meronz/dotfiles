@@ -1,13 +1,16 @@
 # Exit immediately if shell is not interactive
 if [[ $- != *i* ]] ; then return; fi
-
 [ "$OSTYPE" == "msys" ] && export TERM=cygwin
+
+export BASHRC_IMPORTED=1
+[ -z "$PROFILE_IMPORTED" ] && . ~/.bash_profile
 
 ##COLORS
 Color_Off='\[\e[0m\]'
 IRed='\[\e[0;91m\]'
 IBlue='\[\e[0;94m\]'
 IWhite='\[\e[0;97m\]'
+ICyan='\[\e[0;36m\]'
 ##COLORS END
 
 if [[ "$OSTYPE" =~ ^darwin* ]]; then
@@ -18,15 +21,15 @@ fi
 
 # History and autocompletion options
 HISTCONTROL=ignoreboth
-HISTSIZE=1000
-HISTFILESIZE=2000
+HISTSIZE=4000
+HISTFILESIZE=8000
 shopt -s histappend
 shopt -s checkwinsize
 bind  'set skip-completed-text on'
 bind  'set completion-ignore-case on'
 
-if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
-  . /etc/bash_completion
+if [ -f /etc/profile ] && ! shopt -oq posix; then
+  . /etc/profile
 fi
 
 # Default Editor
@@ -56,6 +59,7 @@ else
   alias ll='ls -l'
 fi
 
+alias mm='make -j12'
 alias less='less -r'
 md () { mkdir -p "$@" && cd "$@"; }
 alias command_present="command -v $1 &>/dev/null"
@@ -95,22 +99,42 @@ fi
 [ -f "~/.fzf/shell/key-bindings.bash" ] && source "~/.fzf/shell/key-bindings.bash"
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
+# Kubernetes
+alias k=kubectl
+function kctx { kubectl config use-context $1; }
+function kns { kubectl config set-context --current --namespace=$1; }
+function ke() { kubectl explain $@ | less; }
+if [ -s "$HOME/.kube/completion.bash.inc" ]; then
+  source "$HOME/.kube/completion.bash.inc"
+  complete -F __start_kubectl k
+  complete -F __kubectl_config_get_contexts kctx
+  complete -F __kubectl_get_resource_namespace kns
+fi
+if [ -s "$HOME/.kube/kindcompletion.bash.inc" ]; then
+  source "$HOME/.kube/kindcompletion.bash.inc"
+fi
+
 
 # Bash Prompt
 prompt ()
 {
   command_present git && \
-    cur_branch=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
+    cur_branch=$(git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
+
+  command_present kubectl && \
+    cur_context="($(kubectl config current-context 2>/dev/null | tr -d '\n'):$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null))"
 
   [ ! -z $VIRTUAL_ENV ] && \
     cur_env="(`basename $VIRTUAL_ENV`)"
 
   [ ! -z "$CONDA_DEFAULT_ENV" ] && [ "$CONDA_DEFAULT_ENV" != "base" ] && \
     cur_env="($CONDA_DEFAULT_ENV)"
-  
+
+  [ "$(hostname)" == toolbox ] && cur_env="(🔧)"
+
   # Save history on each command
   history -a; history -c; history -r;
-  PS1="$cur_env$IBlue[\W]$IRed$cur_branch$Color_Off\n$IWhite\$$Color_Off " # Small
+  PS1="$cur_env$IBlue[\W]$IRed$cur_branch$Color_Off$ICyan$cur_context$Color_Off\n$IWhite\$$Color_Off " # Small
 }
 
 PROMPT_COMMAND='prompt'
