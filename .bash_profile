@@ -2,11 +2,10 @@ export PROFILE_IMPORTED=1
 
 if [[ "$OSTYPE" =~ ^darwin* ]]; then
   export BASH_SILENCE_DEPRECATION_WARNING=1
+  [[ -r "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]] && . "$(brew --prefix)/etc/profile.d/bash_completion.sh"
 fi
 
-if [[ "$OSTYPE" != msys && -z "$BASHRC_IMPORTED" ]]; then
-  [ -s ~/.bashrc ] && . ~/.bashrc;
-fi
+[ -s ~/.bashrc ] && . ~/.bashrc;
 
 [ -s "/home/linuxbrew/.linuxbrew/bin/brew" ] && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
